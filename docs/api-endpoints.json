@@ -1,0 +1,626 @@
+{
+  "api": "Gammo Pharmacy API",
+  "baseUrl": "http://localhost:5000/api",
+  "auth": {
+    "type": "Bearer JWT",
+    "header": "Authorization: Bearer <token>",
+    "login": "POST /auth/login"
+  },
+  "demoCredentials": {
+    "employeeId": "EMP-001",
+    "password": "Pharmacy@123"
+  },
+  "totalEndpoints": 53,
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "summary": "Health check",
+      "auth": "None",
+      "status": "live",
+      "requestBody": null,
+      "responses": [
+        "200"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "summary": "Login with employee ID and password",
+      "auth": "None",
+      "status": "live",
+      "requestBody": "LoginRequest",
+      "responses": [
+        "200",
+        "400",
+        "401"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/auth/forgot-password",
+      "summary": "Request password reset",
+      "auth": "None",
+      "status": "live",
+      "requestBody": "ForgotPasswordRequest",
+      "responses": [
+        "200",
+        "400"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "summary": "Get current authenticated user",
+      "auth": "Bearer token",
+      "status": "live",
+      "requestBody": null,
+      "responses": [
+        "200",
+        "401"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "summary": "Logout (client clears token)",
+      "auth": "Bearer token",
+      "status": "live",
+      "requestBody": null,
+      "responses": [
+        "200",
+        "401"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/auth/change-password",
+      "summary": "Change password",
+      "auth": "Bearer token",
+      "status": "live",
+      "requestBody": "ChangePasswordRequest",
+      "responses": [
+        "200",
+        "400",
+        "401"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/users/me",
+      "summary": "Get profile (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/users/me",
+      "summary": "Update profile (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "UpdateProfileRequest",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/products",
+      "summary": "List/search products (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/products",
+      "summary": "Create product (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "Product",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/products/{id}",
+      "summary": "Get product by ID (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/products/{id}",
+      "summary": "Update product (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "Product",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/products/{id}",
+      "summary": "Deactivate product (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inventory",
+      "summary": "List inventory batches (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/inventory",
+      "summary": "Add stock / new batch (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "InventoryItem",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/inventory/{id}",
+      "summary": "Update inventory batch (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inventory/alerts",
+      "summary": "Low/critical stock alerts (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inventory/expiring",
+      "summary": "Near-expiry batches (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/adjustments",
+      "summary": "List stock adjustments (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/adjustments",
+      "summary": "Create adjustment (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "Adjustment",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/suppliers",
+      "summary": "List suppliers (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/suppliers",
+      "summary": "Create supplier (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "Supplier",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/suppliers/{id}",
+      "summary": "Update supplier (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/suppliers/{id}",
+      "summary": "Deactivate supplier (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/purchase-orders",
+      "summary": "List purchase orders (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/purchase-orders",
+      "summary": "Create purchase order (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "PurchaseOrder",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/purchase-orders/{id}",
+      "summary": "Get PO detail (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/purchase-orders/{id}",
+      "summary": "Update draft PO (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/purchase-orders/{id}/submit",
+      "summary": "submit purchase order (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/purchase-orders/{id}/receive",
+      "summary": "receive purchase order (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/purchase-orders/{id}/cancel",
+      "summary": "cancel purchase order (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/pos/products",
+      "summary": "POS catalog with live stock (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/sales",
+      "summary": "Complete checkout (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": "SaleCheckoutRequest",
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/sales/hold",
+      "summary": "Hold cart (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/invoices",
+      "summary": "List invoices (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/invoices/export",
+      "summary": "Export invoices CSV (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/invoices/{id}",
+      "summary": "Get invoice detail (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/invoices/{id}/status",
+      "summary": "Update invoice status (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard",
+      "summary": "Dashboard KPIs (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/sales",
+      "summary": "Sales report (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/revenue-profit",
+      "summary": "Revenue & profit chart (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/by-category",
+      "summary": "Sales by category (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/expiry",
+      "summary": "Expiry analytics (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/attendance",
+      "summary": "Attendance history (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/clock-in",
+      "summary": "Clock in (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/clock-out",
+      "summary": "Clock out (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/activity",
+      "summary": "Activity audit log (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/settings/stock-alerts",
+      "summary": "Get stock alert settings (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/stock-alerts",
+      "summary": "Update stock alert settings (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/settings/expiry-alerts",
+      "summary": "Get expiry alert settings (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/expiry-alerts",
+      "summary": "Update expiry alert settings (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/organization",
+      "summary": "Get organization profile (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/organization",
+      "summary": "Update organization profile (🟡 planned)",
+      "auth": "Bearer token",
+      "status": "planned",
+      "requestBody": null,
+      "responses": [
+        "501"
+      ]
+    }
+  ],
+  "schemas": [
+    "Error",
+    "MessageResponse",
+    "PaginationMeta",
+    "User",
+    "LoginRequest",
+    "LoginResponse",
+    "ChangePasswordRequest",
+    "ForgotPasswordRequest",
+    "UpdateProfileRequest",
+    "Product",
+    "InventoryItem",
+    "Adjustment",
+    "Supplier",
+    "PurchaseOrder",
+    "SaleCheckoutRequest",
+    "SaleCheckoutResponse",
+    "Invoice",
+    "Dashboard"
+  ]
+}

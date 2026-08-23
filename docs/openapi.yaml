@@ -1,0 +1,483 @@
+openapi: 3.0.3
+info:
+  title: Gammo Pharmacy API
+  description: |
+    REST API for Gammo Pharmacy Clinical Management System.
+
+    **Auth:** JWT Bearer token on protected routes.
+
+    **Status:** Auth endpoints are live. Other modules return `501` until implemented.
+  version: 1.0.0
+  contact:
+    name: Gammo Development Association
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local development
+  - url: https://YOUR-DEPLOYED-URL/api
+    description: Production (replace after deploy)
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Users
+  - name: Products
+  - name: Inventory
+  - name: Adjustments
+  - name: Suppliers
+  - name: Purchase Orders
+  - name: POS / Sales
+  - name: Invoices
+  - name: Reports
+  - name: Attendance
+  - name: Settings
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: Invalid employee ID or password
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          example: EMP-001
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Admin, Pharmacist]
+
+    LoginRequest:
+      type: object
+      required: [employeeId, password]
+      properties:
+        employeeId:
+          type: string
+          example: EMP-001
+        password:
+          type: string
+          example: Pharmacy@123
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    ForgotPasswordRequest:
+      type: object
+      required: [employeeId]
+      properties:
+        employeeId:
+          type: string
+        email:
+          type: string
+          format: email
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                  currency:
+                    type: string
+                    example: ETB
+                  vatRate:
+                    type: number
+                    example: 0.15
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with employee ID and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Generic success message
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (client clears token)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get profile (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+    patch:
+      tags: [Users]
+      summary: Update profile (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '501':
+          description: Not implemented yet
+    post:
+      tags: [Products]
+      summary: Create product (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '501':
+          description: Not implemented yet
+    patch:
+      tags: [Products]
+      summary: Update product (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '501':
+          description: Not implemented yet
+    delete:
+      tags: [Products]
+      summary: Deactivate product (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+    post:
+      tags: [Inventory]
+      summary: Add stock batch (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /inventory/alerts:
+    get:
+      tags: [Inventory]
+      summary: Low/critical stock alerts (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /inventory/expiring:
+    get:
+      tags: [Inventory]
+      summary: Near-expiry batches (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /adjustments:
+    get:
+      tags: [Adjustments]
+      summary: List adjustments (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+    post:
+      tags: [Adjustments]
+      summary: Create adjustment (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: List suppliers (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+    post:
+      tags: [Suppliers]
+      summary: Create supplier (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /purchase-orders:
+    get:
+      tags: [Purchase Orders]
+      summary: List POs (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+    post:
+      tags: [Purchase Orders]
+      summary: Create PO (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /purchase-orders/{id}/receive:
+    post:
+      tags: [Purchase Orders]
+      summary: Receive shipment (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /pos/products:
+    get:
+      tags: [POS / Sales]
+      summary: POS catalog with live stock (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /sales:
+    post:
+      tags: [POS / Sales]
+      summary: Complete checkout (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /invoices:
+    get:
+      tags: [Invoices]
+      summary: List invoices (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /dashboard:
+    get:
+      tags: [Reports]
+      summary: Dashboard KPIs (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /reports/sales:
+    get:
+      tags: [Reports]
+      summary: Sales report (planned)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /attendance/clock-in:
+    post:
+      tags: [Attendance]
+      summary: Clock in (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /attendance/clock-out:
+    post:
+      tags: [Attendance]
+      summary: Clock out (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /settings/stock-alerts:
+    get:
+      tags: [Settings]
+      summary: Get stock alert settings (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet
+
+  /organization:
+    get:
+      tags: [Settings]
+      summary: Get organization profile (planned)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '501':
+          description: Not implemented yet

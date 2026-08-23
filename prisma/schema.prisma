@@ -1,6 +1,3 @@
-// Prisma schema for Gammo Pharmacy
-// Models will be expanded as each module is implemented.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,7 +21,7 @@ model User {
   id           String     @id @default(uuid())
   employeeId   String     @unique @map("employee_id")
   name         String
-  email        String?
+  email        String?    @unique
   passwordHash String     @map("password_hash")
   role         Role       @default(Pharmacist)
   phone        String?

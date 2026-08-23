@@ -1,7 +1,3 @@
-/**
- * Seed demo users matching the frontend login page.
- * Run: npm run prisma:seed
- */
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -12,7 +8,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { employeeId: "EMP-001" },
-    update: {},
+    update: { passwordHash },
     create: {
       employeeId: "EMP-001",
       name: "Abebe Kebede",
@@ -25,7 +21,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { employeeId: "EMP-002" },
-    update: {},
+    update: { passwordHash },
     create: {
       employeeId: "EMP-002",
       name: "Sara Alemu",

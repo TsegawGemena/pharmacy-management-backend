@@ -36,7 +36,8 @@ npm run dev
 ```
 
 API: `http://localhost:5000/api`  
-Health: `http://localhost:5000/api/health`
+Health: `http://localhost:5000/api/health`  
+**Swagger UI:** `http://localhost:5000/api/docs`
 
 ## Demo login
 

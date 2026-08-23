@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
+import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env";
+import { loadOpenApiSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import * as attendanceController from "./modules/attendance/attendance.controller";
@@ -36,6 +38,19 @@ export function createApp() {
       service: "gammo-pharmacy-api",
       currency: env.currency,
       vatRate: env.vatRate,
+    });
+  });
+
+  const openApiSpec = loadOpenApiSpec();
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
+  app.get("/api/docs/openapi.json", (_req, res) => {
+    res.type("application/json").sendFile("openapi.json", {
+      root: `${process.cwd()}/docs`,
+    });
+  });
+  app.get("/api/docs/openapi.yaml", (_req, res) => {
+    res.type("text/yaml").sendFile("openapi.yaml", {
+      root: `${process.cwd()}/docs`,
     });
   });
 
