@@ -45,23 +45,11 @@ Health: `http://localhost:5000/api/health`
 |-------------|----------------|-------------|
 | EMP-001     | Pharmacy@123   | Admin       |
 | EMP-002     | Pharmacy@123   | Pharmacist  |
+| EMP-003     | Pharmacy@123   | Cashier     |
 
-## Folder map
-
-```
-src/
-  config/       env
-  db/           prisma client
-  middleware/   auth, errors, validation
-  utils/        jwt, password, vat
-  modules/      one folder per feature
-  app.ts        route wiring
-  server.ts     listen
-```
-
-Each module: `*.routes.ts` → `*.controller.ts` → `*.service.ts`
+Optional login body field `selectedRole` is verified against the DB role (403 on mismatch).
 
 ## Status
 
-- **Auth** (`POST /api/auth/login`, `GET /api/auth/me`) — implemented
-- Other modules — scaffolded stubs (return 501 until built)
+- **Auth, Users, Products, Inventory, Adjustments, Suppliers, POs, Sales, Invoices, Reports, Attendance, Settings** — implemented
+- FEFO stock deduction on sales; VAT 15%; JWT roles from database

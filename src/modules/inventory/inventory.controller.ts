@@ -13,7 +13,7 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction) 
 
 export async function create(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const data = await inventoryService.addStock(req.body);
+    const data = await inventoryService.addStock(req.body, req.user?.userId);
     res.status(201).json({ data });
   } catch (err) {
     next(err);
@@ -22,7 +22,11 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
 
 export async function update(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const data = await inventoryService.updateStock(req.params.id, req.body);
+    const data = await inventoryService.updateStock(
+      req.params.id,
+      req.body,
+      req.user?.userId
+    );
     res.status(200).json({ data });
   } catch (err) {
     next(err);

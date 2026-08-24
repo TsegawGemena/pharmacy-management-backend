@@ -15,8 +15,9 @@ const spec = {
       "REST API for Gammo Pharmacy Clinical Management System.\n\n" +
       "- Auth: JWT Bearer token on protected routes\n" +
       "- Currency: ETB | VAT: 15%\n" +
-      "- ✅ Live endpoints work now\n" +
-      "- 🟡 Planned endpoints return 501 until implemented",
+      "- ✅ Core modules implemented (auth, products, inventory, POS, etc.)\n" +
+      "- Roles: Admin | Pharmacist | Cashier\n" +
+      "- Auth verifies DB role; optional selectedRole must match",
     version: "1.0.0",
     contact: { name: "Gamo Development Association" },
   },
@@ -29,18 +30,18 @@ const spec = {
   ],
   tags: [
     { name: "Health", description: "API health check" },
-    { name: "Auth", description: "Authentication (✅ live)" },
-    { name: "Users", description: "Staff profile (🟡 planned)" },
-    { name: "Products", description: "Product catalog (🟡 planned)" },
-    { name: "Inventory", description: "Stock & batches (🟡 planned)" },
-    { name: "Adjustments", description: "Stock corrections (🟡 planned)" },
-    { name: "Suppliers", description: "Supplier directory (🟡 planned)" },
-    { name: "Purchase Orders", description: "Procurement (🟡 planned)" },
-    { name: "POS / Sales", description: "Point of sale (🟡 planned)" },
-    { name: "Invoices", description: "Billing records (🟡 planned)" },
-    { name: "Reports", description: "Dashboard & analytics (🟡 planned)" },
-    { name: "Attendance", description: "Clock in/out (🟡 planned)" },
-    { name: "Settings", description: "Alerts & organization (🟡 planned)" },
+    { name: "Auth", description: "Authentication" },
+    { name: "Users", description: "Staff profile" },
+    { name: "Products", description: "Product catalog" },
+    { name: "Inventory", description: "Stock & batches" },
+    { name: "Adjustments", description: "Stock corrections" },
+    { name: "Suppliers", description: "Supplier directory" },
+    { name: "Purchase Orders", description: "Procurement" },
+    { name: "POS / Sales", description: "Point of sale" },
+    { name: "Invoices", description: "Billing records" },
+    { name: "Reports", description: "Dashboard & analytics" },
+    { name: "Attendance", description: "Clock in/out" },
+    { name: "Settings", description: "Alerts & organization" },
   ],
   components: {
     securitySchemes: {
@@ -78,7 +79,7 @@ const spec = {
           employeeId: { type: "string", example: "EMP-001" },
           name: { type: "string", example: "Abebe Kebede" },
           email: { type: "string", nullable: true, example: "abebe@gammo.et" },
-          role: { type: "string", enum: ["Admin", "Pharmacist"] },
+          role: { type: "string", enum: ["Admin", "Pharmacist", "Cashier"] },
           phone: { type: "string", nullable: true },
           status: { type: "string", enum: ["Active", "Inactive"] },
           avatarUrl: { type: "string", nullable: true },
@@ -91,8 +92,18 @@ const spec = {
         properties: {
           employeeId: { type: "string", example: "EMP-001" },
           password: { type: "string", example: "Pharmacy@123" },
+          selectedRole: {
+            type: "string",
+            enum: ["Admin", "Pharmacist", "Cashier"],
+            description:
+              "Optional UI portal selection. Backend verifies against the user's real DB role and rejects mismatches (403).",
+          },
         },
-        example: { employeeId: "EMP-001", password: "Pharmacy@123" },
+        example: {
+          employeeId: "EMP-001",
+          password: "Pharmacy@123",
+          selectedRole: "Admin",
+        },
       },
       LoginResponse: {
         type: "object",
@@ -400,6 +411,10 @@ spec.paths["/auth/login"] = {
     },
     "400": { description: "Validation error", content: json(errorRef) },
     "401": { description: "Invalid credentials", content: json(errorRef) },
+    "403": {
+      description: "selectedRole does not match the account's real role",
+      content: json(errorRef),
+    },
   }, {
     requestBody: {
       required: true,

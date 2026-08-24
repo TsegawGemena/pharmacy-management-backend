@@ -4,9 +4,13 @@ import { prisma } from "../../db/prisma";
 import { comparePassword, hashPassword } from "../../utils/password";
 import { signToken } from "../../utils/jwt";
 
+const roleEnum = z.enum(["Admin", "Pharmacist", "Cashier"]);
+
 export const loginSchema = z.object({
   employeeId: z.string().min(1, "Employee ID is required"),
   password: z.string().min(1, "Password is required"),
+  /** Optional UI selection — verified against DB role, never trusted alone */
+  selectedRole: roleEnum.optional(),
 });
 
 export const changePasswordSchema = z.object({
@@ -25,7 +29,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 
-function toPublicUser(user: {
+export function toPublicUser(user: {
   id: string;
   employeeId: string;
   name: string;
@@ -45,7 +49,9 @@ function toPublicUser(user: {
     ...(user.phone !== undefined && { phone: user.phone }),
     ...(user.status !== undefined && { status: user.status }),
     ...(user.avatarUrl !== undefined && { avatarUrl: user.avatarUrl }),
-    ...(user.dateJoined !== undefined && { dateJoined: user.dateJoined }),
+    ...(user.dateJoined !== undefined && {
+      dateJoined: user.dateJoined.toISOString(),
+    }),
   };
 }
 
@@ -61,6 +67,14 @@ export async function login(input: LoginInput) {
   const ok = await comparePassword(input.password, user.passwordHash);
   if (!ok) {
     throw new AppError("Invalid employee ID or password", 401);
+  }
+
+  // Critical: never trust frontend-selected role — verify against DB
+  if (input.selectedRole && input.selectedRole !== user.role) {
+    throw new AppError(
+      `Access denied: this account is ${user.role}, not ${input.selectedRole}`,
+      403
+    );
   }
 
   const token = signToken({
@@ -100,7 +114,10 @@ export async function changePassword(
   }
 
   if (input.currentPassword === input.newPassword) {
-    throw new AppError("New password must be different from current password", 400);
+    throw new AppError(
+      "New password must be different from current password",
+      400
+    );
   }
 
   await prisma.user.update({
@@ -116,7 +133,6 @@ export async function forgotPassword(input: ForgotPasswordInput) {
     where: { employeeId: input.employeeId },
   });
 
-  // Always return the same message to avoid leaking whether the account exists
   if (!user || user.status !== "Active") {
     return {
       message:
@@ -131,7 +147,6 @@ export async function forgotPassword(input: ForgotPasswordInput) {
     };
   }
 
-  // Email delivery is not configured yet; hook up SMTP/SMS here later
   return {
     message:
       "If an account exists with that employee ID, password reset instructions will be sent.",

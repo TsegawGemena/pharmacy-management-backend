@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gammo Pharmacy API",
-    "description": "REST API for Gammo Pharmacy Clinical Management System.\n\n- Auth: JWT Bearer token on protected routes\n- Currency: ETB | VAT: 15%\n- ✅ Live endpoints work now\n- 🟡 Planned endpoints return 501 until implemented",
+    "description": "REST API for Gammo Pharmacy Clinical Management System.\n\n- Auth: JWT Bearer token on protected routes\n- Currency: ETB | VAT: 15%\n- ✅ Core modules implemented (auth, products, inventory, POS, etc.)\n- Roles: Admin | Pharmacist | Cashier\n- Auth verifies DB role; optional selectedRole must match",
     "version": "1.0.0",
     "contact": {
       "name": "Gamo Development Association"
@@ -25,51 +25,51 @@
     },
     {
       "name": "Auth",
-      "description": "Authentication (✅ live)"
+      "description": "Authentication"
     },
     {
       "name": "Users",
-      "description": "Staff profile (🟡 planned)"
+      "description": "Staff profile"
     },
     {
       "name": "Products",
-      "description": "Product catalog (🟡 planned)"
+      "description": "Product catalog"
     },
     {
       "name": "Inventory",
-      "description": "Stock & batches (🟡 planned)"
+      "description": "Stock & batches"
     },
     {
       "name": "Adjustments",
-      "description": "Stock corrections (🟡 planned)"
+      "description": "Stock corrections"
     },
     {
       "name": "Suppliers",
-      "description": "Supplier directory (🟡 planned)"
+      "description": "Supplier directory"
     },
     {
       "name": "Purchase Orders",
-      "description": "Procurement (🟡 planned)"
+      "description": "Procurement"
     },
     {
       "name": "POS / Sales",
-      "description": "Point of sale (🟡 planned)"
+      "description": "Point of sale"
     },
     {
       "name": "Invoices",
-      "description": "Billing records (🟡 planned)"
+      "description": "Billing records"
     },
     {
       "name": "Reports",
-      "description": "Dashboard & analytics (🟡 planned)"
+      "description": "Dashboard & analytics"
     },
     {
       "name": "Attendance",
-      "description": "Clock in/out (🟡 planned)"
+      "description": "Clock in/out"
     },
     {
       "name": "Settings",
-      "description": "Alerts & organization (🟡 planned)"
+      "description": "Alerts & organization"
     }
   ],
   "components": {
@@ -149,7 +149,8 @@
             "type": "string",
             "enum": [
               "Admin",
-              "Pharmacist"
+              "Pharmacist",
+              "Cashier"
             ]
           },
           "phone": {
@@ -187,11 +188,21 @@
           "password": {
             "type": "string",
             "example": "Pharmacy@123"
+          },
+          "selectedRole": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "Pharmacist",
+              "Cashier"
+            ],
+            "description": "Optional UI portal selection. Backend verifies against the user's real DB role and rejects mismatches (403)."
           }
         },
         "example": {
           "employeeId": "EMP-001",
-          "password": "Pharmacy@123"
+          "password": "Pharmacy@123",
+          "selectedRole": "Admin"
         }
       },
       "LoginResponse": {
@@ -748,6 +759,16 @@
           },
           "401": {
             "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "selectedRole does not match the account's real role",
             "content": {
               "application/json": {
                 "schema": {

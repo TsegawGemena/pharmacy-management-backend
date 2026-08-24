@@ -28,7 +28,8 @@ export async function updateStatus(
   try {
     const data = await invoicesService.updateInvoiceStatus(
       req.params.id,
-      req.body
+      req.body,
+      req.user?.userId
     );
     res.status(200).json({ data });
   } catch (err) {
@@ -42,8 +43,8 @@ export async function exportCsv(
   next: NextFunction
 ) {
   try {
-    const data = await invoicesService.exportInvoices(req.query);
-    res.status(200).json(data);
+    const csv = await invoicesService.exportInvoices(req.query);
+    res.status(200).type("text/csv").send(csv);
   } catch (err) {
     next(err);
   }

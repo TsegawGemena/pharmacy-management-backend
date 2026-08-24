@@ -64,7 +64,7 @@ components:
           nullable: true
         role:
           type: string
-          enum: [Admin, Pharmacist]
+          enum: [Admin, Pharmacist, Cashier]
 
     LoginRequest:
       type: object

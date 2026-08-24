@@ -10,11 +10,43 @@ datasource db {
 enum Role {
   Admin
   Pharmacist
+  Cashier
 }
 
 enum UserStatus {
   Active
   Inactive
+}
+
+enum ProductStatus {
+  Active
+  Inactive
+}
+
+enum SupplierStatus {
+  Active
+  Inactive
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING
+  SHIPPED
+  RECEIVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  cash
+  telebirr
+  card
+}
+
+enum InvoiceStatus {
+  Paid
+  Pending
+  Overdue
+  Cancelled
 }
 
 model User {
@@ -31,5 +63,236 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
+  adjustments  StockAdjustment[]
+  sales        Sale[]
+  attendance   Attendance[]
+  activityLogs ActivityLog[]
+
   @@map("users")
+}
+
+model Product {
+  id           String        @id @default(uuid())
+  name         String
+  category     String
+  sku          String        @unique
+  manufacturer String        @default("")
+  price        Decimal       @db.Decimal(12, 2)
+  status       ProductStatus @default(Active)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  batches   InventoryBatch[]
+  poItems   PurchaseOrderItem[]
+  saleItems SaleItem[]
+
+  @@map("products")
+}
+
+model InventoryBatch {
+  id         String   @id @default(uuid())
+  productId  String   @map("product_id")
+  batchNo    String   @map("batch_no")
+  quantity   Int      @default(0)
+  minStock   Int      @default(0) @map("min_stock")
+  maxStock   Int?     @map("max_stock")
+  expiryDate DateTime @map("expiry_date") @db.Date
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(12, 2)
+  location   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, batchNo])
+  @@index([expiryDate])
+  @@map("inventory_batches")
+}
+
+model Supplier {
+  id          String         @id @default(uuid())
+  code        String         @unique
+  name        String
+  category    String
+  contactName String?        @map("contact_name")
+  email       String?
+  phone       String?
+  address     String?
+  rating      Int            @default(5)
+  status      SupplierStatus @default(Active)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id               String              @id @default(uuid())
+  poNumber         String              @unique @map("po_number")
+  supplierId       String              @map("supplier_id")
+  orderDate        DateTime            @map("order_date") @db.Date
+  expectedDelivery DateTime            @map("expected_delivery") @db.Date
+  paymentTerms     String?             @map("payment_terms")
+  status           PurchaseOrderStatus @default(DRAFT)
+  subtotal         Decimal             @default(0) @db.Decimal(12, 2)
+  vat              Decimal             @default(0) @db.Decimal(12, 2)
+  shipping         Decimal             @default(0) @db.Decimal(12, 2)
+  total            Decimal             @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id          String  @id @default(uuid())
+  poId        String  @map("po_id")
+  productId   String? @map("product_id")
+  sku         String
+  name        String
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+  quantity    Int
+  receivedQty Int     @default(0) @map("received_qty")
+
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product       Product?      @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model StockAdjustment {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  date         DateTime @db.Date
+  productName  String   @map("product_name")
+  sku          String
+  type         String
+  qtyChange    Int      @map("qty_change")
+  reason       String?
+  status       String   @default("Completed")
+  adjustedById String?  @map("adjusted_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  adjustedBy User? @relation(fields: [adjustedById], references: [id])
+
+  @@map("stock_adjustments")
+}
+
+model Sale {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique @map("invoice_number")
+  customerName   String?       @map("customer_name")
+  paymentMethod  PaymentMethod @map("payment_method")
+  amountTendered Decimal?      @map("amount_tendered") @db.Decimal(12, 2)
+  changeDue      Decimal?      @map("change_due") @db.Decimal(12, 2)
+  subtotal       Decimal       @db.Decimal(12, 2)
+  vat            Decimal       @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  notes          String?
+  soldById       String?       @map("sold_by_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  soldBy  User?      @relation(fields: [soldById], references: [id])
+  items   SaleItem[]
+  invoice Invoice?
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String  @map("sale_id")
+  productId String? @map("product_id")
+  name      String
+  price     Decimal @db.Decimal(12, 2)
+  qty       Int
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique @map("invoice_number")
+  saleId        String?       @unique @map("sale_id")
+  customerName  String        @map("customer_name")
+  date          DateTime      @db.Date
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentMethod String        @map("payment_method")
+  status        InvoiceStatus @default(Paid)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  sale Sale? @relation(fields: [saleId], references: [id])
+
+  @@map("invoices")
+}
+
+model Attendance {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  date      DateTime  @db.Date
+  clockIn   DateTime? @map("clock_in")
+  clockOut  DateTime? @map("clock_out")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("attendance")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String?
+  entityId  String?  @map("entity_id")
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @default("Gammo Pharmacy")
+  license   String?
+  address   String?
+  phone     String?
+  email     String?
+  logoUrl   String?  @map("logo_url")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("organization")
+}
+
+model StockAlertSettings {
+  id               String  @id @default("default")
+  criticalUnits    Int     @default(20) @map("critical_units")
+  lowStockLeadDays Int     @default(7) @map("low_stock_lead_days")
+  emailAlerts      Boolean @default(true) @map("email_alerts")
+  autoDraftPO      Boolean @default(false) @map("auto_draft_po")
+
+  @@map("stock_alert_settings")
+}
+
+model ExpiryAlertSettings {
+  id                String  @id @default("default")
+  leadDays          Int     @default(90) @map("lead_days")
+  criticalDays      Int     @default(30) @map("critical_days")
+  autoDiscount      Boolean @default(false) @map("auto_discount")
+  emailNotification Boolean @default(true) @map("email_notification")
+
+  @@map("expiry_alert_settings")
 }

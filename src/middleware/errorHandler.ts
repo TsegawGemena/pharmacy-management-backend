@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
 
 export class AppError extends Error {
   statusCode: number;
@@ -17,6 +18,12 @@ export function errorHandler(
 ): void {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ message: err.message });
+    return;
+  }
+
+  if (err instanceof ZodError) {
+    const message = err.errors.map((e) => e.message).join("; ") || "Invalid input";
+    res.status(400).json({ message });
     return;
   }
 

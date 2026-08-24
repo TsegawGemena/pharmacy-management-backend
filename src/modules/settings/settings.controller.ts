@@ -21,7 +21,10 @@ export async function putStockAlerts(
   next: NextFunction
 ) {
   try {
-    const data = await settingsService.updateStockAlertSettings(req.body);
+    const data = await settingsService.updateStockAlertSettings(
+      req.body,
+      req.user?.userId
+    );
     res.status(200).json({ data });
   } catch (err) {
     next(err);
@@ -47,7 +50,10 @@ export async function putExpiryAlerts(
   next: NextFunction
 ) {
   try {
-    const data = await settingsService.updateExpiryAlertSettings(req.body);
+    const data = await settingsService.updateExpiryAlertSettings(
+      req.body,
+      req.user?.userId
+    );
     res.status(200).json({ data });
   } catch (err) {
     next(err);
@@ -73,7 +79,10 @@ export async function putOrg(
   next: NextFunction
 ) {
   try {
-    const data = await settingsService.updateOrganization(req.body);
+    const data = await settingsService.updateOrganization(
+      req.body,
+      req.user?.userId
+    );
     res.status(200).json({ data });
   } catch (err) {
     next(err);

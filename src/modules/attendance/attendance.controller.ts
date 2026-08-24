@@ -18,7 +18,7 @@ export async function clockIn(
 ) {
   try {
     const data = await attendanceService.clockIn(req.user!.userId);
-    res.status(201).json({ data });
+    res.status(201).json(data);
   } catch (err) {
     next(err);
   }
@@ -31,20 +31,20 @@ export async function clockOut(
 ) {
   try {
     const data = await attendanceService.clockOut(req.user!.userId);
-    res.status(200).json({ data });
+    res.status(200).json(data);
   } catch (err) {
     next(err);
   }
 }
 
 export async function activity(
-  _req: AuthRequest,
+  req: AuthRequest,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const data = await attendanceService.listActivity();
-    res.status(200).json({ data });
+    const data = await attendanceService.listActivity(req.query);
+    res.status(200).json(data);
   } catch (err) {
     next(err);
   }
