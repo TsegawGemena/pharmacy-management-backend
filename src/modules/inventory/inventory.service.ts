@@ -8,6 +8,9 @@ import {
   paginatedMeta,
   parsePage,
 } from "../../utils/helpers";
+import { ensureCategory } from "../categories/categories.service";
+
+const money = z.coerce.number().min(0);
 
 export const addStockSchema = z.object({
   name: z.string().min(1),
@@ -17,7 +20,12 @@ export const addStockSchema = z.object({
   minStock: z.number().int().min(0),
   maxStock: z.number().int().optional(),
   expiryDate: z.string().min(1),
-  unitPrice: z.union([z.string(), z.number()]),
+  purchasePrice: money.optional(),
+  sellingPrice: money.optional(),
+  /** @deprecated use purchasePrice */
+  unitPrice: z.union([z.string(), z.number()]).optional(),
+  priceValidFrom: z.string().optional(),
+  priceValidUntil: z.string().optional().nullable(),
   location: z.string().optional(),
 });
 
@@ -27,8 +35,25 @@ export const updateStockSchema = z.object({
   location: z.string().nullable().optional(),
   stock: z.number().int().optional(),
   quantity: z.number().int().optional(),
+  purchasePrice: money.optional(),
+  sellingPrice: money.optional(),
   unitPrice: z.union([z.string(), z.number()]).optional(),
   expiryDate: z.string().optional(),
+  priceValidFrom: z.string().optional(),
+  priceValidUntil: z.string().optional().nullable(),
+});
+
+export const restockSchema = z.object({
+  productId: z.string().min(1),
+  quantity: z.coerce.number().int().min(1),
+  purchasePrice: money.optional(),
+  sellingPrice: money.optional(),
+  unitPrice: z.union([z.string(), z.number()]).optional(),
+  batchNo: z.string().optional(),
+  expiryDate: z.string().optional(),
+  priceValidFrom: z.string().optional(),
+  priceValidUntil: z.string().optional().nullable(),
+  minStock: z.number().int().min(0).optional(),
 });
 
 function dateStr(d: Date): string {
@@ -63,7 +88,10 @@ type BatchWithProduct = {
   minStock: number;
   maxStock: number | null;
   expiryDate: Date;
-  unitPrice: Prisma.Decimal;
+  purchasePrice: Prisma.Decimal;
+  sellingPrice: Prisma.Decimal;
+  priceEffectiveFrom: Date;
+  priceEffectiveUntil: Date | null;
   product: { name: string; category: string };
 };
 
@@ -79,7 +107,14 @@ async function mapBatch(batch: BatchWithProduct, leadDays: number) {
     maxStock: batch.maxStock ?? undefined,
     expiryDate: dateStr(batch.expiryDate),
     isExpiringSoon: batch.expiryDate <= threshold,
-    unitPrice: decimalStr(batch.unitPrice),
+    purchasePrice: decimalStr(batch.purchasePrice),
+    sellingPrice: decimalStr(batch.sellingPrice),
+    priceValidFrom: dateStr(batch.priceEffectiveFrom),
+    priceValidUntil: batch.priceEffectiveUntil
+      ? dateStr(batch.priceEffectiveUntil)
+      : null,
+    /** Backward-compatible alias for existing inventory UI */
+    unitPrice: decimalStr(batch.sellingPrice),
   };
 }
 
@@ -87,6 +122,26 @@ function generateSku(name: string) {
   const prefix =
     name.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "PRD";
   return `${prefix}-${Date.now().toString().slice(-5)}`;
+}
+
+function resolvePrices(input: {
+  purchasePrice?: number;
+  sellingPrice?: number;
+  unitPrice?: string | number;
+}) {
+  const purchase =
+    input.purchasePrice !== undefined
+      ? Number(input.purchasePrice)
+      : input.unitPrice !== undefined
+        ? Number(input.unitPrice)
+        : undefined;
+  const selling =
+    input.sellingPrice !== undefined
+      ? Number(input.sellingPrice)
+      : input.unitPrice !== undefined
+        ? Number(input.unitPrice)
+        : undefined;
+  return { purchase, selling };
 }
 
 export async function listInventory(query: Record<string, unknown>) {
@@ -117,12 +172,15 @@ export async function listInventory(query: Record<string, unknown>) {
   return { data, meta: paginatedMeta(total, page, limit) };
 }
 
-export async function addStock(
-  raw: unknown,
-  userId?: string
-) {
+export async function addStock(raw: unknown, userId?: string) {
   const input = addStockSchema.parse(raw);
   const leadDays = await getExpiryLeadDays();
+  const { purchase, selling } = resolvePrices(input);
+  if (purchase === undefined || selling === undefined) {
+    throw new AppError("purchasePrice and sellingPrice are required", 400);
+  }
+
+  await ensureCategory(input.category);
 
   let product = await prisma.product.findFirst({
     where: { name: { equals: input.name, mode: "insensitive" } },
@@ -134,12 +192,18 @@ export async function addStock(
         name: input.name,
         category: input.category,
         sku: generateSku(input.name),
-        manufacturer: "",
-        price: new Prisma.Decimal(input.unitPrice),
+        price: new Prisma.Decimal(selling),
         status: "Active",
       },
     });
   }
+
+  const priceFrom = input.priceValidFrom
+    ? new Date(input.priceValidFrom)
+    : new Date();
+  const priceUntil = input.priceValidUntil
+    ? new Date(input.priceValidUntil)
+    : null;
 
   const existingBatch = await prisma.inventoryBatch.findUnique({
     where: {
@@ -149,6 +213,7 @@ export async function addStock(
 
   let batch;
   if (existingBatch) {
+    // Same batch number: increase qty only — do not overwrite historical prices
     batch = await prisma.inventoryBatch.update({
       where: { id: existingBatch.id },
       data: {
@@ -156,7 +221,6 @@ export async function addStock(
         minStock: input.minStock,
         maxStock: input.maxStock ?? existingBatch.maxStock,
         expiryDate: new Date(input.expiryDate),
-        unitPrice: new Prisma.Decimal(input.unitPrice),
         ...(input.location !== undefined && { location: input.location }),
       },
       include: { product: { select: { name: true, category: true } } },
@@ -170,12 +234,20 @@ export async function addStock(
         minStock: input.minStock,
         maxStock: input.maxStock,
         expiryDate: new Date(input.expiryDate),
-        unitPrice: new Prisma.Decimal(input.unitPrice),
+        purchasePrice: new Prisma.Decimal(purchase),
+        sellingPrice: new Prisma.Decimal(selling),
+        priceEffectiveFrom: priceFrom,
+        priceEffectiveUntil: priceUntil,
         location: input.location,
       },
       include: { product: { select: { name: true, category: true } } },
     });
   }
+
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { price: new Prisma.Decimal(selling) },
+  });
 
   await logActivity({
     userId,
@@ -188,6 +260,83 @@ export async function addStock(
   return mapBatch(batch, leadDays);
 }
 
+export async function restockInventory(raw: unknown, userId?: string) {
+  const input = restockSchema.parse(raw);
+  const product = await prisma.product.findUnique({
+    where: { id: input.productId },
+  });
+  if (!product) throw new AppError("Product not found", 404);
+
+  const { purchase, selling } = resolvePrices(input);
+  const purchasePrice =
+    purchase !== undefined ? purchase : Number(product.price);
+  const sellingPrice =
+    selling !== undefined ? selling : Number(product.price);
+
+  const batchNo =
+    input.batchNo?.trim() || `RST-${Date.now().toString().slice(-6)}`;
+  const expiry = input.expiryDate
+    ? new Date(input.expiryDate)
+    : (() => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() + 2);
+        return d;
+      })();
+  const priceFrom = input.priceValidFrom
+    ? new Date(input.priceValidFrom)
+    : new Date();
+  const priceUntil = input.priceValidUntil
+    ? new Date(input.priceValidUntil)
+    : null;
+
+  const existingBatch = await prisma.inventoryBatch.findUnique({
+    where: {
+      productId_batchNo: { productId: product.id, batchNo },
+    },
+  });
+
+  let batch;
+  if (existingBatch) {
+    batch = await prisma.inventoryBatch.update({
+      where: { id: existingBatch.id },
+      data: { quantity: existingBatch.quantity + input.quantity },
+      include: { product: { select: { name: true, category: true } } },
+    });
+  } else {
+    batch = await prisma.inventoryBatch.create({
+      data: {
+        productId: product.id,
+        batchNo,
+        quantity: input.quantity,
+        minStock: input.minStock ?? 10,
+        maxStock: Math.max(input.quantity * 2, 100),
+        expiryDate: expiry,
+        purchasePrice: new Prisma.Decimal(purchasePrice),
+        sellingPrice: new Prisma.Decimal(sellingPrice),
+        priceEffectiveFrom: priceFrom,
+        priceEffectiveUntil: priceUntil,
+      },
+      include: { product: { select: { name: true, category: true } } },
+    });
+  }
+
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { price: new Prisma.Decimal(sellingPrice) },
+  });
+
+  await logActivity({
+    userId,
+    action: "RESTOCK",
+    entity: "InventoryBatch",
+    entityId: batch.id,
+    details: `${product.name} +${input.quantity}`,
+  });
+
+  const leadDays = await getExpiryLeadDays();
+  return mapBatch(batch, leadDays);
+}
+
 export async function updateStock(id: string, raw: unknown, userId?: string) {
   const input = updateStockSchema.parse(raw);
   const existing = await prisma.inventoryBatch.findUnique({
@@ -197,6 +346,8 @@ export async function updateStock(id: string, raw: unknown, userId?: string) {
   if (!existing) throw new AppError("Inventory batch not found", 404);
 
   const qty = input.stock ?? input.quantity;
+  const { purchase, selling } = resolvePrices(input);
+
   const batch = await prisma.inventoryBatch.update({
     where: { id },
     data: {
@@ -204,15 +355,33 @@ export async function updateStock(id: string, raw: unknown, userId?: string) {
       ...(input.maxStock !== undefined && { maxStock: input.maxStock }),
       ...(input.location !== undefined && { location: input.location }),
       ...(qty !== undefined && { quantity: qty }),
-      ...(input.unitPrice !== undefined && {
-        unitPrice: new Prisma.Decimal(input.unitPrice),
+      ...(purchase !== undefined && {
+        purchasePrice: new Prisma.Decimal(purchase),
+      }),
+      ...(selling !== undefined && {
+        sellingPrice: new Prisma.Decimal(selling),
       }),
       ...(input.expiryDate !== undefined && {
         expiryDate: new Date(input.expiryDate),
       }),
+      ...(input.priceValidFrom !== undefined && {
+        priceEffectiveFrom: new Date(input.priceValidFrom),
+      }),
+      ...(input.priceValidUntil !== undefined && {
+        priceEffectiveUntil: input.priceValidUntil
+          ? new Date(input.priceValidUntil)
+          : null,
+      }),
     },
     include: { product: { select: { name: true, category: true } } },
   });
+
+  if (selling !== undefined) {
+    await prisma.product.update({
+      where: { id: existing.productId },
+      data: { price: new Prisma.Decimal(selling) },
+    });
+  }
 
   await logActivity({
     userId,

@@ -73,6 +73,16 @@ async function main() {
     });
   }
 
+
+  const categoryNames = ["Antibiotics", "Analgesics", "Pain Relief", "Vitamins"];
+  for (const name of categoryNames) {
+    await prisma.category.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   const amox = await prisma.product.upsert({
     where: { sku: "AMX-001" },
     update: {},
@@ -80,7 +90,6 @@ async function main() {
       name: "Amoxicillin 500mg Caps",
       category: "Antibiotics",
       sku: "AMX-001",
-      manufacturer: "GSK",
       price: 120,
       status: "Active",
     },
@@ -93,7 +102,6 @@ async function main() {
       name: "Paracetamol 500mg Tabs",
       category: "Analgesics",
       sku: "PAR-500",
-      manufacturer: "Addis Pharma",
       price: 45,
       status: "Active",
     },
@@ -106,7 +114,6 @@ async function main() {
       name: "Ibuprofen 400mg Tabs",
       category: "Pain Relief",
       sku: "IBU-400",
-      manufacturer: "Bayer",
       price: 80,
       status: "Active",
     },
@@ -127,7 +134,9 @@ async function main() {
       minStock: 100,
       maxStock: 500,
       expiryDate: expiryFar,
-      unitPrice: 100,
+      purchasePrice: 100,
+      sellingPrice: 120,
+      priceEffectiveFrom: new Date(),
       location: "Shelf A-1",
     },
   });
@@ -142,7 +151,9 @@ async function main() {
       minStock: 50,
       maxStock: 400,
       expiryDate: expiryFar,
-      unitPrice: 30,
+      purchasePrice: 30,
+      sellingPrice: 45,
+      priceEffectiveFrom: new Date(),
       location: "Shelf B-2",
     },
   });
@@ -157,7 +168,9 @@ async function main() {
       minStock: 50,
       maxStock: 300,
       expiryDate: expirySoon,
-      unitPrice: 60,
+      purchasePrice: 60,
+      sellingPrice: 80,
+      priceEffectiveFrom: new Date(),
       location: "Shelf C-1",
     },
   });

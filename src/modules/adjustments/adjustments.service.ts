@@ -130,7 +130,9 @@ export async function createAdjustment(raw: unknown, userId: string) {
               quantity: input.qtyChange,
               minStock: 10,
               expiryDate: expiry,
-              unitPrice: product.price,
+              purchasePrice: product.price,
+              sellingPrice: product.price,
+              priceEffectiveFrom: new Date(),
             },
           });
         }

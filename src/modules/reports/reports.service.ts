@@ -42,7 +42,7 @@ async function estimateCostForItems(
       orderBy: { createdAt: "desc" },
     });
     const unitCost = batch
-      ? toNumber(batch.unitPrice)
+      ? toNumber(batch.purchasePrice)
       : toNumber(item.price as number) * 0.6;
     cost += unitCost * item.qty;
   }
@@ -226,7 +226,7 @@ export async function getSalesReport(range: string) {
   const lowTurnover = lowBatches.map((b) => ({
     name: b.product.name,
     stockQty: b.quantity,
-    value: Number((b.quantity * toNumber(b.unitPrice)).toFixed(2)),
+    value: Number((b.quantity * toNumber(b.purchasePrice)).toFixed(2)),
     status: b.quantity <= b.minStock ? "Critical" : "Slow",
   }));
 
@@ -421,7 +421,9 @@ export async function getExpiryReport() {
     batchNo: b.batchNo,
     stock: b.quantity,
     expiryDate: dateStr(b.expiryDate),
-    unitPrice: decimalStr(b.unitPrice),
+    unitPrice: decimalStr(b.sellingPrice),
+    purchasePrice: decimalStr(b.purchasePrice),
+    sellingPrice: decimalStr(b.sellingPrice),
   });
 
   return {

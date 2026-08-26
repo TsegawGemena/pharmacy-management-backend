@@ -389,7 +389,6 @@ export async function receivePurchaseOrder(
               name: item.name,
               category: "Uncategorized",
               sku: item.sku,
-              manufacturer: "",
               price: item.unitPrice,
               status: "Active",
             },
@@ -425,7 +424,9 @@ export async function receivePurchaseOrder(
             minStock: 10,
             maxStock: Math.max(qty * 2, 100),
             expiryDate: expiry,
-            unitPrice: item.unitPrice,
+            purchasePrice: item.unitPrice,
+            sellingPrice: item.unitPrice,
+            priceEffectiveFrom: new Date(),
           },
         });
       }

@@ -50,3 +50,13 @@ export async function expiring(_req: AuthRequest, res: Response, next: NextFunct
     next(err);
   }
 }
+
+export async function restock(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const data = await inventoryService.restockInventory(req.body, req.user?.userId);
+    res.status(200).json({ data });
+  } catch (err) {
+    next(err);
+  }
+}
+

@@ -11,6 +11,7 @@ import * as settingsController from "./modules/settings/settings.controller";
 import authRoutes from "./modules/auth/auth.routes";
 import usersRoutes from "./modules/users/users.routes";
 import productsRoutes from "./modules/products/products.routes";
+import categoriesRoutes from "./modules/categories/categories.routes";
 import inventoryRoutes from "./modules/inventory/inventory.routes";
 import adjustmentsRoutes from "./modules/adjustments/adjustments.routes";
 import suppliersRoutes from "./modules/suppliers/suppliers.routes";
@@ -58,6 +59,7 @@ export function createApp() {
   app.use("/api/auth", authRoutes);
   app.use("/api/users", usersRoutes);
   app.use("/api/products", productsRoutes);
+  app.use("/api/categories", categoriesRoutes);
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/adjustments", adjustmentsRoutes);
   app.use("/api/suppliers", suppliersRoutes);

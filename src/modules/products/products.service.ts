@@ -9,24 +9,45 @@ import {
   parsePage,
   productStock,
 } from "../../utils/helpers";
+import { ensureCategory } from "../categories/categories.service";
+
+const money = z.coerce.number().min(0, "Price must be >= 0");
 
 export const createProductSchema = z.object({
   name: z.string().min(1),
   category: z.string().min(1),
   sku: z.string().optional(),
-  manufacturer: z.string().optional().default(""),
-  price: z.union([z.string(), z.number()]),
-  stock: z.number().int().min(0).optional(),
   status: z.enum(["Active", "Inactive"]).optional().default("Active"),
+  // Initial stock
+  quantity: z.coerce.number().int().min(0).optional(),
+  stock: z.coerce.number().int().min(0).optional(), // alias
+  batchNo: z.string().optional(),
+  expiryDate: z.string().optional(),
+  // Pricing (batch-level; product.price stores current selling price for POS)
+  purchasePrice: money,
+  sellingPrice: money,
+  priceValidFrom: z.string().optional(),
+  priceValidUntil: z.string().optional().nullable(),
+  // Legacy alias accepted but not preferred
+  price: z.union([z.string(), z.number()]).optional(),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+export const updateProductSchema = z.object({
+  name: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
+  sku: z.string().optional(),
+  status: z.enum(["Active", "Inactive"]).optional(),
+  /** Catalog selling price shown in product list / POS */
+  price: z.union([z.string(), z.number()]).optional(),
+  sellingPrice: money.optional(),
+});
 
 function generateSku(name: string) {
-  const prefix = name
-    .replace(/[^a-zA-Z]/g, "")
-    .slice(0, 3)
-    .toUpperCase() || "PRD";
+  const prefix =
+    name
+      .replace(/[^a-zA-Z]/g, "")
+      .slice(0, 3)
+      .toUpperCase() || "PRD";
   return `${prefix}-${Date.now().toString().slice(-5)}`;
 }
 
@@ -35,7 +56,6 @@ async function mapProduct(p: {
   name: string;
   category: string;
   sku: string;
-  manufacturer: string;
   price: Prisma.Decimal;
   status: string;
 }) {
@@ -45,8 +65,8 @@ async function mapProduct(p: {
     name: p.name,
     category: p.category,
     sku: p.sku,
-    manufacturer: p.manufacturer,
     price: decimalStr(p.price),
+    sellingPrice: decimalStr(p.price),
     stock,
     status: p.status,
   };
@@ -98,29 +118,53 @@ export async function createProduct(
   const existing = await prisma.product.findUnique({ where: { sku } });
   if (existing) throw new AppError("SKU already exists", 400);
 
+  const qty = input.quantity ?? input.stock ?? 0;
+  if (qty > 0 && !input.expiryDate) {
+    throw new AppError("Expiry Date is required when creating initial stock", 400);
+  }
+
+  const purchasePrice = Number(input.purchasePrice);
+  const sellingPrice = Number(input.sellingPrice);
+  const priceValidFrom = input.priceValidFrom
+    ? new Date(input.priceValidFrom)
+    : new Date();
+  if (Number.isNaN(priceValidFrom.getTime())) {
+    throw new AppError("Invalid Price Valid From date", 400);
+  }
+  const priceValidUntil = input.priceValidUntil
+    ? new Date(input.priceValidUntil)
+    : null;
+  if (priceValidUntil && Number.isNaN(priceValidUntil.getTime())) {
+    throw new AppError("Invalid Price Valid Until date", 400);
+  }
+
+  await ensureCategory(input.category);
+
   const product = await prisma.product.create({
     data: {
       name: input.name,
-      category: input.category,
+      category: input.category.trim(),
       sku,
-      manufacturer: input.manufacturer || "",
-      price: new Prisma.Decimal(input.price),
+      price: new Prisma.Decimal(sellingPrice),
       status: input.status || "Active",
     },
   });
 
-  if (input.stock && input.stock > 0) {
-    const expiry = new Date();
-    expiry.setFullYear(expiry.getFullYear() + 2);
+  if (qty > 0) {
+    const batchNo =
+      input.batchNo?.trim() || `BX-${Date.now().toString().slice(-6)}`;
     await prisma.inventoryBatch.create({
       data: {
         productId: product.id,
-        batchNo: `BX-${Date.now().toString().slice(-6)}`,
-        quantity: input.stock,
+        batchNo,
+        quantity: qty,
         minStock: 10,
-        maxStock: Math.max(input.stock * 2, 100),
-        expiryDate: expiry,
-        unitPrice: new Prisma.Decimal(input.price),
+        maxStock: Math.max(qty * 2, 100),
+        expiryDate: new Date(input.expiryDate!),
+        purchasePrice: new Prisma.Decimal(purchasePrice),
+        sellingPrice: new Prisma.Decimal(sellingPrice),
+        priceEffectiveFrom: priceValidFrom,
+        priceEffectiveUntil: priceValidUntil,
       },
     });
   }
@@ -149,14 +193,24 @@ export async function updateProduct(
     if (taken) throw new AppError("SKU already exists", 400);
   }
 
+  if (input.category) {
+    await ensureCategory(input.category);
+  }
+
+  const nextPrice =
+    input.sellingPrice !== undefined
+      ? new Prisma.Decimal(input.sellingPrice)
+      : input.price !== undefined
+        ? new Prisma.Decimal(input.price)
+        : undefined;
+
   const product = await prisma.product.update({
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
-      ...(input.category !== undefined && { category: input.category }),
+      ...(input.category !== undefined && { category: input.category.trim() }),
       ...(input.sku !== undefined && { sku: input.sku }),
-      ...(input.manufacturer !== undefined && { manufacturer: input.manufacturer }),
-      ...(input.price !== undefined && { price: new Prisma.Decimal(input.price) }),
+      ...(nextPrice !== undefined && { price: nextPrice }),
       ...(input.status !== undefined && { status: input.status }),
     },
   });
