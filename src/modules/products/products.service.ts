@@ -4,6 +4,7 @@ import { AppError } from "../../middleware/errorHandler";
 import { prisma } from "../../db/prisma";
 import {
   decimalStr,
+  deductStockFefo,
   logActivity,
   paginatedMeta,
   parsePage,
@@ -13,11 +14,24 @@ import { ensureCategory } from "../categories/categories.service";
 import { createStockNotification } from "../notifications/notifications.service";
 
 const money = z.coerce.number().min(0, "Price must be >= 0");
+const DRUG_UNITS = [
+  "Units",
+  "Tablets",
+  "Capsules",
+  "Bottles",
+  "Boxes",
+  "Packs",
+  "Sachets",
+  "Vials",
+  "Tubes",
+  "ml",
+] as const;
 
 export const createProductSchema = z.object({
   name: z.string().min(1),
   category: z.string().min(1),
   sku: z.string().optional(),
+  unit: z.string().min(1).optional().default("Units"),
   status: z.enum(["Active", "Inactive"]).optional().default("Active"),
   // Initial stock
   quantity: z.coerce.number().int().min(0).optional(),
@@ -37,10 +51,17 @@ export const updateProductSchema = z.object({
   name: z.string().min(1).optional(),
   category: z.string().min(1).optional(),
   sku: z.string().optional(),
+  unit: z.string().min(1).optional(),
   status: z.enum(["Active", "Inactive"]).optional(),
   /** Catalog selling price shown in product list / POS */
   price: z.union([z.string(), z.number()]).optional(),
   sellingPrice: money.optional(),
+  /** Set absolute on-hand quantity (edits inventory batches). */
+  quantity: z.coerce.number().int().min(0).optional(),
+  stock: z.coerce.number().int().min(0).optional(),
+  /** Required when increasing absolute stock from zero / adding a new batch. */
+  expiryDate: z.string().optional(),
+  purchasePrice: money.optional(),
 });
 
 function generateSku(name: string) {
@@ -52,11 +73,17 @@ function generateSku(name: string) {
   return `${prefix}-${Date.now().toString().slice(-5)}`;
 }
 
+function normalizeUnit(unit?: string | null) {
+  const value = (unit || "Units").trim() || "Units";
+  return value;
+}
+
 async function mapProduct(p: {
   id: string;
   name: string;
   category: string;
   sku: string;
+  unit?: string | null;
   price: Prisma.Decimal;
   status: string;
 }) {
@@ -66,12 +93,90 @@ async function mapProduct(p: {
     name: p.name,
     category: p.category,
     sku: p.sku,
+    unit: normalizeUnit(p.unit),
     price: decimalStr(p.price),
     sellingPrice: decimalStr(p.price),
     stock,
     status: p.status,
   };
 }
+
+async function setAbsoluteStock(
+  productId: string,
+  productName: string,
+  targetQty: number,
+  opts: {
+    expiryDate?: string;
+    purchasePrice?: number;
+    sellingPrice?: number;
+    userId?: string;
+  }
+) {
+  const before = await productStock(productId);
+  if (targetQty === before) return;
+
+  if (targetQty > before) {
+    const add = targetQty - before;
+    if (before === 0 && !opts.expiryDate) {
+      throw new AppError(
+        "Expiry date is required when setting stock for a product with no inventory",
+        400
+      );
+    }
+    const batches = await prisma.inventoryBatch.findMany({
+      where: { productId },
+      orderBy: { expiryDate: "asc" },
+    });
+    if (batches.length > 0) {
+      await prisma.inventoryBatch.update({
+        where: { id: batches[0].id },
+        data: { quantity: batches[0].quantity + add },
+      });
+    } else {
+      const expiry = opts.expiryDate
+        ? new Date(opts.expiryDate)
+        : (() => {
+            const d = new Date();
+            d.setFullYear(d.getFullYear() + 2);
+            return d;
+          })();
+      const purchase = opts.purchasePrice ?? opts.sellingPrice ?? 0;
+      const selling = opts.sellingPrice ?? opts.purchasePrice ?? 0;
+      await prisma.inventoryBatch.create({
+        data: {
+          productId,
+          batchNo: `ADJ-${Date.now().toString().slice(-6)}`,
+          quantity: add,
+          minStock: 10,
+          maxStock: Math.max(add * 2, 100),
+          expiryDate: expiry,
+          purchasePrice: new Prisma.Decimal(purchase),
+          sellingPrice: new Prisma.Decimal(selling),
+          priceEffectiveFrom: new Date(),
+        },
+      });
+    }
+  } else {
+    await prisma.$transaction(async (tx) => {
+      await deductStockFefo(tx, productId, before - targetQty);
+    });
+  }
+
+  const after = await productStock(productId);
+  await createStockNotification({
+    type: "UPDATE_STOCK",
+    title: "Stock updated",
+    message: `${productName} stock was set from ${before} to ${after}.`,
+    productId,
+    productName,
+    quantityChange: after - before,
+    quantityBefore: before,
+    quantityAfter: after,
+    actorId: opts.userId,
+  });
+}
+
+export { DRUG_UNITS };
 
 export async function listProducts(query: Record<string, unknown>) {
   const { page, limit, skip } = parsePage(query);
@@ -146,6 +251,7 @@ export async function createProduct(
       name: input.name,
       category: input.category.trim(),
       sku,
+      unit: normalizeUnit(input.unit),
       price: new Prisma.Decimal(sellingPrice),
       status: input.status || "Active",
     },
@@ -224,10 +330,32 @@ export async function updateProduct(
       ...(input.name !== undefined && { name: input.name }),
       ...(input.category !== undefined && { category: input.category.trim() }),
       ...(input.sku !== undefined && { sku: input.sku }),
+      ...(input.unit !== undefined && { unit: normalizeUnit(input.unit) }),
       ...(nextPrice !== undefined && { price: nextPrice }),
       ...(input.status !== undefined && { status: input.status }),
     },
   });
+
+  const absoluteStock =
+    input.stock !== undefined
+      ? input.stock
+      : input.quantity !== undefined
+        ? input.quantity
+        : undefined;
+
+  if (absoluteStock !== undefined) {
+    await setAbsoluteStock(id, product.name, absoluteStock, {
+      expiryDate: input.expiryDate,
+      purchasePrice: input.purchasePrice,
+      sellingPrice:
+        input.sellingPrice !== undefined
+          ? input.sellingPrice
+          : nextPrice !== undefined
+            ? Number(nextPrice)
+            : Number(product.price),
+      userId,
+    });
+  }
 
   await logActivity({
     userId,

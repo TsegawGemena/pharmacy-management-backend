@@ -86,6 +86,8 @@ model Product {
   name      String
   category  String
   sku       String        @unique
+  /// Packaging / counting unit (e.g. Tablets, Bottles, Boxes)
+  unit      String        @default("Units")
   /// Current catalog selling price (denormalized from latest batch for POS)
   price     Decimal       @db.Decimal(12, 2)
   status    ProductStatus @default(Active)

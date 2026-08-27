@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "unit" TEXT NOT NULL DEFAULT 'Units';
