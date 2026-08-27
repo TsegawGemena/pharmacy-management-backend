@@ -7,6 +7,10 @@ export const createCategorySchema = z.object({
   name: z.string().trim().min(1, "Category name is required"),
 });
 
+export const updateCategorySchema = z.object({
+  name: z.string().trim().min(1, "Category name is required"),
+});
+
 function mapCategory(c: {
   id: string;
   name: string;
@@ -28,10 +32,7 @@ export async function listCategories() {
   return { data: rows.map(mapCategory) };
 }
 
-export async function createCategory(
-  raw: unknown,
-  userId?: string
-) {
+export async function createCategory(raw: unknown, userId?: string) {
   const input = createCategorySchema.parse(raw);
   const name = input.name.trim();
 
@@ -52,6 +53,62 @@ export async function createCategory(
     entity: "Category",
     entityId: category.id,
     details: category.name,
+  });
+
+  return mapCategory(category);
+}
+
+/**
+ * Rename a category and rewrite product.category strings so products stay linked.
+ */
+export async function updateCategory(
+  id: string,
+  raw: unknown,
+  userId?: string
+) {
+  const input = updateCategorySchema.parse(raw);
+  const name = input.name.trim();
+  if (!name) {
+    throw new AppError("Category name is required", 400);
+  }
+
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) throw new AppError("Category not found", 404);
+
+  if (existing.name === name) {
+    return mapCategory(existing);
+  }
+
+  const duplicate = await prisma.category.findFirst({
+    where: {
+      name: { equals: name, mode: "insensitive" },
+      NOT: { id },
+    },
+  });
+  if (duplicate) {
+    throw new AppError("Category already exists", 400);
+  }
+
+  const oldName = existing.name;
+
+  const category = await prisma.$transaction(async (tx) => {
+    const updated = await tx.category.update({
+      where: { id },
+      data: { name },
+    });
+    await tx.product.updateMany({
+      where: { category: oldName },
+      data: { category: name },
+    });
+    return updated;
+  });
+
+  await logActivity({
+    userId,
+    action: "UPDATE_CATEGORY",
+    entity: "Category",
+    entityId: id,
+    details: `${oldName} → ${name}`,
   });
 
   return mapCategory(category);

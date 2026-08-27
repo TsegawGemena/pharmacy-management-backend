@@ -7,8 +7,10 @@ import {
   logActivity,
   paginatedMeta,
   parsePage,
+  productStock,
 } from "../../utils/helpers";
 import { ensureCategory } from "../categories/categories.service";
+import { createStockNotification } from "../notifications/notifications.service";
 
 const money = z.coerce.number().min(0);
 
@@ -257,6 +259,19 @@ export async function addStock(raw: unknown, userId?: string) {
     details: `${product.name} ${input.batchNo} +${input.stock}`,
   });
 
+  const afterStock = await productStock(product.id);
+  await createStockNotification({
+    type: "ADD_STOCK",
+    title: "New stock added",
+    message: `${product.name} was restocked. +${input.stock} units added.`,
+    productId: product.id,
+    productName: product.name,
+    quantityChange: input.stock,
+    quantityAfter: afterStock,
+    batchNo: batch.batchNo,
+    actorId: userId,
+  });
+
   return mapBatch(batch, leadDays);
 }
 
@@ -333,6 +348,21 @@ export async function restockInventory(raw: unknown, userId?: string) {
     details: `${product.name} +${input.quantity}`,
   });
 
+  const beforeStock = (await productStock(product.id)) - input.quantity;
+  const afterStock = beforeStock + input.quantity;
+  await createStockNotification({
+    type: "RESTOCK",
+    title: "Medication restocked",
+    message: `${product.name} was restocked. +${input.quantity} units added.`,
+    productId: product.id,
+    productName: product.name,
+    quantityChange: input.quantity,
+    quantityBefore: Math.max(0, beforeStock),
+    quantityAfter: afterStock,
+    batchNo: batch.batchNo,
+    actorId: userId,
+  });
+
   const leadDays = await getExpiryLeadDays();
   return mapBatch(batch, leadDays);
 }
@@ -346,6 +376,7 @@ export async function updateStock(id: string, raw: unknown, userId?: string) {
   if (!existing) throw new AppError("Inventory batch not found", 404);
 
   const qty = input.stock ?? input.quantity;
+  const beforeTotal = await productStock(existing.productId);
   const { purchase, selling } = resolvePrices(input);
 
   const batch = await prisma.inventoryBatch.update({
@@ -389,6 +420,23 @@ export async function updateStock(id: string, raw: unknown, userId?: string) {
     entity: "InventoryBatch",
     entityId: id,
   });
+
+  if (qty !== undefined && qty !== existing.quantity) {
+    const afterTotal = await productStock(existing.productId);
+    const productName = existing.product.name;
+    await createStockNotification({
+      type: "UPDATE_STOCK",
+      title: "Stock updated",
+      message: `${productName} stock was adjusted from ${beforeTotal} to ${afterTotal} units.`,
+      productId: existing.productId,
+      productName,
+      quantityChange: afterTotal - beforeTotal,
+      quantityBefore: beforeTotal,
+      quantityAfter: afterTotal,
+      batchNo: existing.batchNo,
+      actorId: userId,
+    });
+  }
 
   const leadDays = await getExpiryLeadDays();
   return mapBatch(batch, leadDays);

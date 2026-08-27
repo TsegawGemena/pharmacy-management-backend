@@ -102,7 +102,7 @@ export async function completeSale(raw: unknown, userId: string) {
       const sale = await tx.sale.create({
         data: {
           invoiceNumber,
-          customerName: input.customerName || "Walking Customer",
+          customerName: input.customerName?.trim() || "Walk-in",
           paymentMethod: input.paymentMethod,
           amountTendered,
           changeDue,
@@ -126,7 +126,7 @@ export async function completeSale(raw: unknown, userId: string) {
         data: {
           invoiceNumber,
           saleId: sale.id,
-          customerName: input.customerName || "Walking Customer",
+          customerName: input.customerName?.trim() || "Walk-in",
           date: new Date(),
           amount: total,
           paymentMethod: mapInvoicePaymentMethod(input.paymentMethod),
@@ -158,6 +158,12 @@ export async function completeSale(raw: unknown, userId: string) {
     total,
     changeDue,
     paymentMethod: input.paymentMethod,
+    items: input.items.map((i) => ({
+      name: i.name || "Item",
+      price: i.price,
+      qty: i.qty,
+    })),
+    createdAt: new Date().toISOString(),
   };
 }
 

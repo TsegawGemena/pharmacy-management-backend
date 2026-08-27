@@ -10,6 +10,7 @@ import {
   productStock,
 } from "../../utils/helpers";
 import { ensureCategory } from "../categories/categories.service";
+import { createStockNotification } from "../notifications/notifications.service";
 
 const money = z.coerce.number().min(0, "Price must be >= 0");
 
@@ -166,6 +167,19 @@ export async function createProduct(
         priceEffectiveFrom: priceValidFrom,
         priceEffectiveUntil: priceValidUntil,
       },
+    });
+
+    await createStockNotification({
+      type: "ADD_STOCK",
+      title: "New stock added",
+      message: `${product.name} was restocked. +${qty} units added.`,
+      productId: product.id,
+      productName: product.name,
+      quantityChange: qty,
+      quantityBefore: 0,
+      quantityAfter: qty,
+      batchNo,
+      actorId: userId,
     });
   }
 

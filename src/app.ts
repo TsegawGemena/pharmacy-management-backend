@@ -21,6 +21,7 @@ import invoicesRoutes from "./modules/invoices/invoices.routes";
 import reportsRoutes from "./modules/reports/reports.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import settingsRoutes from "./modules/settings/settings.routes";
+import notificationsRoutes from "./modules/notifications/notifications.routes";
 
 export function createApp() {
   const app = express();
@@ -69,6 +70,7 @@ export function createApp() {
   app.use("/api", reportsRoutes); // /api/dashboard, /api/reports/*
   app.use("/api/attendance", attendanceRoutes);
   app.use("/api/settings", settingsRoutes);
+  app.use("/api/notifications", notificationsRoutes);
 
   // Top-level settings-adjacent routes from the API contract
   app.get("/api/activity", requireAuth, attendanceController.activity);

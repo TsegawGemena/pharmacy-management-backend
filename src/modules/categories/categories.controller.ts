@@ -23,6 +23,19 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
   }
 }
 
+export async function update(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const data = await categoriesService.updateCategory(
+      req.params.id,
+      req.body,
+      req.user?.userId
+    );
+    res.status(200).json({ data });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function remove(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const result = await categoriesService.deleteCategory(

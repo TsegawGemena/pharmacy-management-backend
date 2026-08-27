@@ -7,7 +7,9 @@ import {
   nextCode,
   paginatedMeta,
   parsePage,
+  productStock,
 } from "../../utils/helpers";
+import { createStockNotification } from "../notifications/notifications.service";
 
 export const createAdjustmentSchema = z.object({
   date: z.string().min(1),
@@ -88,6 +90,7 @@ export async function createAdjustment(raw: unknown, userId: string) {
   });
   if (!product) throw new AppError("Product not found for SKU", 404);
 
+  const beforeStock = await productStock(product.id);
   const code = await nextCode("ADJ", "adjustment");
 
   const adjustment = await prisma.$transaction(async (tx) => {
@@ -161,6 +164,19 @@ export async function createAdjustment(raw: unknown, userId: string) {
     entity: "StockAdjustment",
     entityId: adjustment.id,
     details: `${code} ${input.sku} ${input.qtyChange}`,
+  });
+
+  const afterStock = await productStock(product.id);
+  await createStockNotification({
+    type: "ADJUSTMENT",
+    title: "Stock adjustment",
+    message: `${product.name} stock was adjusted from ${beforeStock} to ${afterStock} units.`,
+    productId: product.id,
+    productName: product.name,
+    quantityChange: input.qtyChange,
+    quantityBefore: beforeStock,
+    quantityAfter: afterStock,
+    actorId: userId,
   });
 
   return mapAdjustment({

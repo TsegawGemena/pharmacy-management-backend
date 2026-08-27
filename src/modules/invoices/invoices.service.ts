@@ -86,8 +86,40 @@ export async function listInvoices(query: Record<string, unknown>) {
 }
 
 export async function getInvoice(id: string) {
-  const inv = await findInvoice(id);
-  return mapInvoice(inv);
+  const inv = await prisma.invoice.findFirst({
+    where: { OR: [{ invoiceNumber: id }, { id }] },
+    include: {
+      sale: {
+        include: {
+          items: true,
+        },
+      },
+    },
+  });
+  if (!inv) throw new AppError("Invoice not found", 404);
+
+  const base = mapInvoice(inv);
+  const sale = inv.sale;
+  return {
+    ...base,
+    pharmacyName: "Gammo Pharmacy",
+    createdAt: (sale?.createdAt ?? inv.createdAt).toISOString(),
+    subtotal: sale ? decimalStr(sale.subtotal) : undefined,
+    vat: sale ? decimalStr(sale.vat) : undefined,
+    total: sale ? decimalStr(sale.total) : base.amount,
+    amountTendered: sale?.amountTendered
+      ? decimalStr(sale.amountTendered)
+      : undefined,
+    changeDue: sale?.changeDue ? decimalStr(sale.changeDue) : undefined,
+    items: (sale?.items ?? []).map((item) => ({
+      name: item.name,
+      qty: item.qty,
+      price: decimalStr(item.price),
+      lineTotal: decimalStr(
+        new Prisma.Decimal(item.price).mul(item.qty)
+      ),
+    })),
+  };
 }
 
 export async function updateInvoiceStatus(
