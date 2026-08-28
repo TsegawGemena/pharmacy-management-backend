@@ -1,17 +1,30 @@
 import "dotenv/config";
 
-function resolveDatabaseUrl(): string {
-  const direct =
-    process.env.DATABASE_URL ||
-    process.env.DATABASE_PRIVATE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRESQL_URL;
-  if (direct) return direct;
+function isUnresolvedReference(value: string): boolean {
+  return value.includes("${{");
+}
 
-  const host = process.env.PGHOST || process.env.POSTGRES_HOST;
+function resolveDatabaseUrl(): string {
+  const candidates = [
+    process.env.DATABASE_URL,
+    process.env.DATABASE_PRIVATE_URL,
+    process.env.DATABASE_PUBLIC_URL,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRESQL_URL,
+  ].filter(
+    (value): value is string => typeof value === "string" && value.length > 0 && !isUnresolvedReference(value)
+  );
+
+  if (candidates[0]) return candidates[0];
+
+  const host =
+    process.env.PGHOST ||
+    process.env.POSTGRES_HOST ||
+    process.env.RAILWAY_PRIVATE_DOMAIN;
   const user = process.env.PGUSER || process.env.POSTGRES_USER;
   const password = process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD;
-  const database = process.env.PGDATABASE || process.env.POSTGRES_DB;
+  const database =
+    process.env.PGDATABASE || process.env.POSTGRES_DB || process.env.POSTGRES_DATABASE;
   const port = process.env.PGPORT || process.env.POSTGRES_PORT || "5432";
 
   if (host && user && database) {
@@ -27,6 +40,12 @@ function resolveDatabaseUrl(): string {
 const databaseUrl = resolveDatabaseUrl();
 if (databaseUrl && !process.env.DATABASE_URL) {
   process.env.DATABASE_URL = databaseUrl;
+}
+
+export function databaseEnvKeys(): string[] {
+  return Object.keys(process.env).filter((key) =>
+    /DATABASE|POSTGRES|^PG/i.test(key)
+  );
 }
 
 export const env = {

@@ -1,28 +1,32 @@
 import { execSync } from "node:child_process";
-import { env } from "./config/env";
+import { databaseEnvKeys, env } from "./config/env";
+
+const unresolvedReference =
+  process.env.DATABASE_URL && process.env.DATABASE_URL.includes("${{");
 
 if (!env.databaseUrl) {
-  const hints = [
-    "PGHOST",
-    "PGUSER",
-    "PGDATABASE",
-    "DATABASE_PRIVATE_URL",
-    "POSTGRES_URL",
-  ].filter((key) => process.env[key]);
+  const hints = databaseEnvKeys();
 
   console.error(
     [
-      "DATABASE_URL is not configured.",
+      "DATABASE_URL is not configured on this Railway service.",
       "",
-      "On Railway:",
-      "1. Open your backend service → Variables",
-      "2. Add reference: DATABASE_URL = ${{Postgres.DATABASE_URL}}",
-      "3. Redeploy",
+      "Fix (do this on pharmacy-management-backend, NOT on Postgres):",
+      "1. Open backend service → Variables tab",
+      '2. Click "+ New Variable" → "Add Variable Reference"',
+      "3. Select service: Postgres",
+      "4. Select variable: DATABASE_URL",
+      "5. Save, then click Deploy",
       "",
+      unresolvedReference
+        ? 'Your DATABASE_URL looks like a literal "${{...}}" string. Delete it and re-add using "Add Variable Reference".'
+        : null,
       hints.length
-        ? `Found related vars: ${hints.join(", ")} (but could not build a connection URL)`
-        : "No database env vars were found on this service.",
-    ].join("\n")
+        ? `Env keys found on this service: ${hints.join(", ")}`
+        : "No database-related env keys were found on this service.",
+    ]
+      .filter(Boolean)
+      .join("\n")
   );
   process.exit(1);
 }
