@@ -18,6 +18,7 @@ Steps to deploy the backend and share it with the frontend team.
 |----------|---------|--------|
 | `PORT` | `5000` | Host may override (e.g. Railway sets this) |
 | `DATABASE_URL` | `postgresql://...` | Managed Postgres connection string |
+| `PRISMA_HIDE_UPDATE_MESSAGE` | `true` | Optional; avoids Railway false deploy failures from Prisma update notices |
 | `JWT_SECRET` | long random string | **Required in production** |
 | `JWT_EXPIRES_IN` | `7d` | Token lifetime |
 | `CORS_ORIGIN` | `https://your-frontend.com` | Frontend URL — **critical** |
@@ -56,15 +57,20 @@ npm start
 3. Add **PostgreSQL** plugin → copy `DATABASE_URL`
 4. Set env vars (`JWT_SECRET`, `CORS_ORIGIN`, etc.)
 5. Build command: `npm install && npx prisma generate && npm run build`
-6. Start command: `npx prisma migrate deploy && npm start`
-7. Copy public URL → `https://xxx.up.railway.app/api`
+6. Start command: `npm start` (runs migrations automatically, then starts the API)
+7. Do **not** set a separate pre-deploy command — migrations run on startup via `prepare-db`
+8. Copy public URL → `https://xxx.up.railway.app/api`
 
 ### Option B — Render
 
 1. [render.com](https://render.com) → Web Service + PostgreSQL
-2. Build: `npm install && npx prisma generate && npm run build`
-3. Start: `npx prisma migrate deploy && npm start`
-4. Set env vars in dashboard
+2. **Root Directory:** leave empty (repo root)
+3. **Build Command:** `npm run build` (Render runs `npm install` first automatically; `heroku-postbuild` also compiles if this is left empty)
+4. **Start Command:** `npx prisma migrate deploy && npm start` (or `npm start` if migrations are handled separately)
+5. Set env vars in dashboard (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, etc.)
+6. Optional: connect the repo `render.yaml` for the same settings automatically
+
+**Important:** Do not set `NODE_ENV=production` before the build step unless `typescript` is installed as a production dependency (this project includes it in `dependencies` so builds work on Render).
 
 ### Option C — VPS (DigitalOcean / AWS EC2)
 

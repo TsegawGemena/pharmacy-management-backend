@@ -5,9 +5,11 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
-    "start": "node dist/prepare-db.js && node dist/server.js",
+    "build": "prisma generate && tsc -p tsconfig.build.json && node -e \"require('fs').accessSync('dist/server.js')\"",
+    "start": "node dist/server.js",
+    "railway:start": "node dist/prepare-db.js && node dist/server.js",
     "postinstall": "prisma generate",
+    "heroku-postbuild": "npm run build",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
@@ -20,6 +22,9 @@
   ],
   "license": "UNLICENSED",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^3.0.2",
@@ -30,7 +35,8 @@
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.7.0",
     "zod": "^3.24.2",
-    "prisma": "^6.5.0"
+    "prisma": "^6.5.0",
+    "typescript": "^6.0.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -44,7 +50,6 @@
     "@types/swagger-ui-express": "^4.1.8",
     "swagger-ui-express": "^5.0.1",
     "tsx": "^4.19.3",
-    "typescript": "^6.0.0",
     "yaml": "^2.9.0"
   },
   "allowScripts": {

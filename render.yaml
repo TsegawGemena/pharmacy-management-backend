@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: gammo-pharmacy-api
+    runtime: node
+    buildCommand: npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    healthCheckPath: /api/health
