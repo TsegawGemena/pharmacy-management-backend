@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { Prisma } from "@prisma/client";
 
 export class AppError extends Error {
   statusCode: number;
@@ -25,6 +26,21 @@ export function errorHandler(
     const message = err.errors.map((e) => e.message).join("; ") || "Invalid input";
     res.status(400).json({ message });
     return;
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    console.error(err);
+    if (err.code === "P2002") {
+      res.status(400).json({ message: "A record with this value already exists." });
+      return;
+    }
+    if (err.code === "P2022") {
+      res.status(500).json({
+        message:
+          "Database schema is out of date. Restart the API server or run database migrations.",
+      });
+      return;
+    }
   }
 
   console.error(err);
